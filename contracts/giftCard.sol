@@ -5,19 +5,19 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-
-contract giftCard is ERC721 {
+contract giftCard is ERC721, Ownable {
 
     
     //this address gets percentage from deposits
-    address payable public owner;
+    
 
     using SafeMath for uint256;
     using Address for address;
 
     constructor() ERC721("giftCard", "GC") {
-        owner = payable(msg.sender);
+       
         
     }
      
@@ -44,7 +44,7 @@ contract giftCard is ERC721 {
             
             cards[cardId].moneyDate=block.timestamp+10;
             cards[cardId].funds=(msg.value)/2;
-            (bool success, ) = owner.call{value: (msg.value)/2}("");
+            (bool success, ) = owner().call{value: (msg.value)/2}("");
             require(success, "Failed to send Ether");
 
 
