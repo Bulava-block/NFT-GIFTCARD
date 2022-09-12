@@ -6,29 +6,53 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract giftCard is ERC721, Ownable {
 
     
-    //this address gets percentage from deposits
-    
+    struct TokenInfo{
+        IERC20 paytoken;
+    }
+     mapping(uint256=>TokenInfo) public allowedCrypto;
+    //TokenInfo[] public allowedCrypto;
 
     using SafeMath for uint256;
     using Address for address;
 
     constructor() ERC721("giftCard", "GC") {
-       
-        
+     }
+
+        //this adds new ERC20 to the list of accepted currencies
+       function addCurency(IERC20 _paytoken) public onlyOwner returns(uint256){
+          totalCurrencies++;
+          TokenInfo storage _tokenInfo=allowedCrypto[totalCurrencies];
+          _tokenInfo.paytoken=_paytoken;
+            return totalCurrencies;
+        }  
+
+
+
+
+        //IERC20 paytoken
+        // infoToken storage tokens=allowedCurrencies[_pid]
+
+        // this takes all the funds from the contract and sends it to the Owner
+    function emptyTheVault() public onlyOwner{
+         (bool success, ) = owner().call{value: (contractBalance())}("");
+            require(success, "Failed to send Ether");
     }
-     
     
+
+    //current number of allowed currencies
+    uint totalCurrencies;
     //current number of cards
     uint256 totalCards;
 
     // this assigns a number to a card
     mapping(uint256 => Card) public cards;
     
-    //this shows when the funds were loaded inside the card
+    
 
     // these are the stats that a card will have
     struct Card {
@@ -40,16 +64,26 @@ contract giftCard is ERC721, Ownable {
 
     }
         // this allows this contract to receive ethers
-       function sendmoney(uint256 cardId) external payable returns(uint256 moneyDate, uint256 funds){
+    //    function sendmoney(uint256 cardId) external payable returns(uint256 moneyDate, uint256 funds){
             
-            cards[cardId].moneyDate=block.timestamp+10;
-            cards[cardId].funds=(msg.value)/2;
-            (bool success, ) = owner().call{value: (msg.value)/2}("");
-            require(success, "Failed to send Ether");
+    //         cards[cardId].moneyDate=block.timestamp+10;
+    //         cards[cardId].funds=(msg.value)/2;
+    //         (bool success, ) = owner().call{value: (msg.value)/2}("");
+    //         require(success, "Failed to send Ether");
 
 
-            return(cards[cardId].moneyDate, cards[cardId].funds);
-       }
+    //         return(cards[cardId].moneyDate, cards[cardId].funds);
+    //    }
+        //0x71C7656EC7ab88b098defB751B7401B5f6d8976F
+        //this allows this contract to receive other tokens
+        function sendTokens(uint256 pid) public payable{
+            TokenInfo storage tokens = allowedCrypto[pid]; 
+            IERC20 paytoken;
+            paytoken = tokens.paytoken;
+
+
+        }
+
 
         function contractBalance() public view returns(uint){
             return address(this).balance;
