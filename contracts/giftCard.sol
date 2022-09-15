@@ -2,11 +2,11 @@
 pragma solidity ^0.8.9;
 
 
-
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
 
 contract giftCard is ERC721, Ownable {
 
@@ -15,7 +15,7 @@ contract giftCard is ERC721, Ownable {
         IERC20 paytoken;
     }
      mapping(uint256=>TokenInfo) public allowedCrypto;
-    //TokenInfo[] public allowedCrypto;
+    
 
     using SafeMath for uint256;
     using Address for address;
@@ -23,8 +23,30 @@ contract giftCard is ERC721, Ownable {
     constructor() ERC721("giftCard", "GC") {
      }
 
-        //this adds new ERC20 to the list of accepted currencies
-       function addCurency(IERC20 _paytoken) public onlyOwner returns(uint256){
+       
+        //current number of allowed currencies
+        uint totalCurrencies;
+        //current number of cards
+        uint256 totalCards;
+
+        // this assigns a number to a card
+        mapping(uint256 => Card) public cards;
+        
+        
+
+        // these are the stats that a card will have
+        struct Card {
+            //this shows the currency the card stores 
+            uint256 coinPid; 
+            //this shows the amount of the currency the card stores
+            uint256 funds;  
+            //this shows when you are alowed to claim the funds       
+            uint256 moneyDate;
+        }
+          
+           //this adds new ERC20 to the list of accepted currencies
+        function addCurency(IERC20 _paytoken) public onlyOwner returns(uint256){
+            
           totalCurrencies++;
           TokenInfo storage _tokenInfo=allowedCrypto[totalCurrencies];
           _tokenInfo.paytoken=_paytoken;
@@ -32,67 +54,38 @@ contract giftCard is ERC721, Ownable {
         }  
 
 
-
-
-        //IERC20 paytoken
-        // infoToken storage tokens=allowedCurrencies[_pid]
-
-        // this takes all the funds from the contract and sends it to the Owner
-    function emptyTheVault() public onlyOwner{
-         (bool success, ) = owner().call{value: (contractBalance())}("");
-            require(success, "Failed to send Ether");
-    }
     
-
-    //current number of allowed currencies
-    uint totalCurrencies;
-    //current number of cards
-    uint256 totalCards;
-
-    // this assigns a number to a card
-    mapping(uint256 => Card) public cards;
-    
-    
-
-    // these are the stats that a card will have
-    struct Card {
         
-        //this shows when you are alowed to claim the funds
-        uint256 moneyDate;
-        uint256 funds;       
-        address balanceOwner;
-
-    }
-        // this allows this contract to receive ethers
-    //    function sendmoney(uint256 cardId) external payable returns(uint256 moneyDate, uint256 funds){
-            
-    //         cards[cardId].moneyDate=block.timestamp+10;
-    //         cards[cardId].funds=(msg.value)/2;
-    //         (bool success, ) = owner().call{value: (msg.value)/2}("");
-    //         require(success, "Failed to send Ether");
-
-
-    //         return(cards[cardId].moneyDate, cards[cardId].funds);
-    //    }
-        //0x71C7656EC7ab88b098defB751B7401B5f6d8976F
-        //this allows this contract to receive other tokens
-        function sendTokens(uint256 pid) public payable{
+        //this allows this smart contract to store currencies
+        function sendTokens(uint256 pid, uint256 cardId, uint256 _moneyDate, uint256 howMuch) public payable{
+            require(cards[cardId].coinPid==0, "This card already has a coin assigned to it");
+            require(block.timestamp>=cards[cardId].moneyDate, "you need to wait!");
             TokenInfo storage tokens = allowedCrypto[pid]; 
             IERC20 paytoken;
             paytoken = tokens.paytoken;
-
-
+            cards[cardId].coinPid=pid;
+            cards[cardId].moneyDate=block.timestamp+_moneyDate;
+            cards[cardId].funds=howMuch/2;
+            paytoken.transferFrom(msg.sender, address(this), howMuch/2);
+            // where we should store the capital
+            paytoken.transferFrom(msg.sender, owner(), howMuch/2);
         }
 
 
-        function contractBalance() public view returns(uint){
-            return address(this).balance;
-        }
-
-        //creates a card from scratch
-     function createCard() public returns(uint256 moneyDate, uint256 balance, address balanceOwner) {
+            // this shows the owner how much of pid currency is stored in the smart contract
+            function contractBalance(uint256 pid) public view onlyOwner returns(uint256){
+              
+                 TokenInfo storage tokens = allowedCrypto[pid]; 
+                 IERC20 paytoken;
+                 paytoken = tokens.paytoken;
+                
+                return paytoken.balanceOf(address(this));
+            }
         
 
+        //creates a card from scratch
+     function createCard() public returns(uint256 moneyDate, uint256 funds, uint256 pid, uint256 idOfCard) {
+        
         totalCards++;
         _safeMint(msg.sender, totalCards);
 
@@ -100,53 +93,67 @@ contract giftCard is ERC721, Ownable {
         
         _card.moneyDate= 0;
         _card.funds=0;
-        _card.balanceOwner=msg.sender;
-        return(_card.moneyDate, _card.funds, _card.balanceOwner);
+        _card.coinPid=pid;
+        
+        return(_card.moneyDate, _card.funds, _card.coinPid, totalCards);
         
      }
 
         
       
      //this shows the balance of the card that an owner can redeem 
-     // this shows how much longer you have to wait before you can claim the funds  
+     // this shows how much longer you have to wait before you can claim the funds
+     // this shows what currency this card holds 
         function cardInfo(uint256 cardId) public view
-            returns (uint256 theRest, uint256 moneyDate){
+            returns (uint256 theRest, uint256 moneyDate, uint256 coinPid){
                    
                 return (cards[cardId].funds,
-                        cards[cardId].moneyDate);
+                        cards[cardId].moneyDate,
+                        cards[cardId].coinPid);
 
         }
 
     //this empties the card and sends everything to the redeemer
-        function claimAll(uint256 cardId, address payable to) public  {
-            require(address(this).balance>=cards[cardId].funds, "The contract doesn't have enough funds to pay you");
-             require(block.timestamp>=cards[cardId].moneyDate, "you need to wait!");
-             require(cards[cardId].balanceOwner==to, "the funds belong to a different person");
+        function takeAll(uint256 cardId) public  {
+            require(address(this).balance>=cards[cardId].funds, "The contract doesn't have enough funds to pay you");    //  do we need a variable 
+            require(block.timestamp>=cards[cardId].moneyDate, "you need to wait!");                                      //
+            cards[cardId].funds=0;
+            TokenInfo storage tokens = allowedCrypto[cards[cardId].coinPid];
+            IERC20 paytoken;
+            paytoken = tokens.paytoken;
+            paytoken.transfer(msg.sender, paytoken.balanceOf(address(this)));
+        }
+        //THIS FUNCTION DOESNT TAKE ANY ROYALTIES YET!
 
-            (bool success, ) = to.call{value: cards[cardId].funds}("");
-            require(success, "Failed to send Ether");
+
+        function withdraw(uint256 _pid) public payable onlyOwner() {
+            TokenInfo storage tokens = allowedCrypto[_pid];
+            IERC20 paytoken;
+            paytoken = tokens.paytoken;
+            paytoken.transfer(msg.sender, paytoken.balanceOf(address(this)));
             
         }
 
 
                 //this allows you to take a portion of funds or the whole amount
-        function takeSomeMoney(uint256 cardId, address payable to) public payable{
+        function takeSomeMoney(uint256 cardId) public payable{
             require(address(this).balance>=msg.value, "The contract doesn't have enough funds to pay you");
-            require(block.timestamp>=cards[cardId].moneyDate, "you need to wait!");
-            require(cards[cardId].balanceOwner==to, "the funds belong to a different person");
+            require(block.timestamp>=cards[cardId].moneyDate, "you need to wait!");         
             require(msg.value<=cards[cardId].funds, "Not enough funds on the card");
-
-            (bool success, ) = to.call{value: msg.value}("");
-            require(success, "Failed to send Ether");
-            
+            TokenInfo storage tokens = allowedCrypto[cards[cardId].coinPid];
+            IERC20 paytoken;
+            paytoken = tokens.paytoken;
+            paytoken.transfer(msg.sender, msg.value);
+                //THIS FUNCTION DOESNT TAKE ANY ROYALTIES YET!
+           
         }
 
                     //this allows you to lock your funds for x amount of time and multiple it 
-        function makeMoney(uint cardId) public{
-                require(cards[cardId].funds!=0);
-                cards[cardId].moneyDate=block.timestamp+10;
-                cards[cardId].funds=cards[cardId].funds*2;
-        }
+        // function makeMoney(uint cardId) public{
+        //         require(cards[cardId].funds!=0);
+        //         cards[cardId].moneyDate=block.timestamp+10;
+        //         cards[cardId].funds=cards[cardId].funds*2;
+        // }
 
 
 

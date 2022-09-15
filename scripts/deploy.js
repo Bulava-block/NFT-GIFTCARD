@@ -7,20 +7,18 @@
 const hre = require("hardhat");
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
+  // 1. Get the contract to deploy
+  const giftCard = await ethers.getContractFactory('giftCard');
+  console.log('Deploying giftCard...');
 
-  const lockedAmount = hre.ethers.utils.parseEther("1");
+  // 2. Instantiating a new giftCard smart contract
+  const GIF_CARD = await giftCard.deploy();
 
-  const Lock = await hre.ethers.getContractFactory("Lock");
-  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
+  // 3. Waiting for the deployment to resolve
+  await GIF_CARD.deployed();
 
-  await lock.deployed();
-
-  console.log(
-    `Lock with 1 ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`
-  );
+  // 4. Use the contract instance to get the contract address
+  console.log('giftCard deployed to:', GIF_CARD.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
@@ -29,3 +27,14 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
+
+
+
+
+
+
+
+
+
+  
