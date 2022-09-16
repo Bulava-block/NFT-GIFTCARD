@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 
-contract giftCard is ERC721, Ownable {
+contract giftCard is ERC721Enumerable, Ownable {
 
     
     struct TokenInfo{
@@ -73,7 +73,7 @@ contract giftCard is ERC721, Ownable {
 
 
             // this shows the owner how much of pid currency is stored in the smart contract
-            function contractBalance(uint256 pid) public view onlyOwner returns(uint256){
+            function contractBalance(uint256 pid) public view returns(uint256){
               
                  TokenInfo storage tokens = allowedCrypto[pid]; 
                  IERC20 paytoken;
@@ -84,7 +84,7 @@ contract giftCard is ERC721, Ownable {
         
 
         //creates a card from scratch
-     function createCard() public returns(uint256 moneyDate, uint256 funds, uint256 pid, uint256 idOfCard) {
+     function createCard() public returns(uint256 idOfCard) {
         
         totalCards++;
         _safeMint(msg.sender, totalCards);
@@ -93,9 +93,9 @@ contract giftCard is ERC721, Ownable {
         
         _card.moneyDate= 0;
         _card.funds=0;
-        _card.coinPid=pid;
+        _card.coinPid=0;
         
-        return(_card.moneyDate, _card.funds, _card.coinPid, totalCards);
+        return totalCards;
         
      }
 

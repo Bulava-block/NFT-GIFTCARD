@@ -1,12 +1,14 @@
 {
   "devDependencies": {
-    "hardhat": "^2.11.1",
+    "@nomicfoundation/hardhat-chai-matchers": "^1.0.3",
+    "@nomiclabs/hardhat-ethers": "^2.1.1",
+    "@openzeppelin/contracts": "^4.6.0",
+    "chai": "^4.3.6",
+    "hardhat": "^2.11.2",
     "mocha": "^10.0.0"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-toolbox": "^1.0.2",
-    "@openzeppelin/contracts": "^4.7.3",
-    "chai": "^4.3.6",
     "ethers": "^5.7.0"
   },
   "name": "nft-giftcard",
