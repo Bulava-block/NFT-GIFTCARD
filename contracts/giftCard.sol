@@ -11,12 +11,36 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 contract giftCard is ERC721Enumerable, Ownable {
 
     address theBoss;
+
+
+    struct Identity {
+
+        uint256 userId;
+        address wallet;
+    }
+
+    struct Bid {
+    uint256 amount;
+    Identity bidder;
+    }
     
+    
+
     struct TokenInfo{
         IERC20 paytoken;
     }
+
      //mapping(uint256=>TokenInfo) public allowedCrypto;
     TokenInfo[] public allowedCrypto;
+
+    struct Person {
+        string name;
+        address[] wallets;
+    }
+
+
+   
+
 
     event newAddedCurrency(
         uint256 totalCurrencies
@@ -45,8 +69,9 @@ contract giftCard is ERC721Enumerable, Ownable {
         // this shows how much funds was taken from the card
         //this shows ho much funds is still on the card
         event portionTaken(uint256 amountTaken, uint256 remainingFunds);
-
-
+        event CurrencyAdded(IERC20 token, bool veryfied);
+        // event Signer(address signer);
+        
     using SafeMath for uint256;
     using Address for address;
 
@@ -74,7 +99,34 @@ contract giftCard is ERC721Enumerable, Ownable {
             //this shows when you are alowed to claim the funds       
             uint256 moneyDate;
         }
-          
+
+        function verify(uint8 v, bytes32 r, bytes32 s, string calldata message, address sender) public view returns(bool) {
+            uint chainId = block.chainid;
+            bytes32 eip712DomainHash = keccak256(abi.encodePacked(
+                keccak256(abi.encodePacked("EIP712Domain(string name, string version, uint256 chainId, address verifyingContract)")),
+                 keccak256(abi.encodePacked("MY app")),
+                 keccak256(abi.encodePacked("1")),
+                 chainId,
+                address(this)
+            ));
+
+            bytes32 hashArgs = keccak256(abi.encodePacked(
+                keccak256(abi.encodePacked("set(string message)")),
+                keccak256(abi.encodePacked(message))
+            ));
+
+            bytes32 hash = keccak256(abi.encodePacked(
+                "\x19\x01",
+                eip712DomainHash,
+                hashArgs
+            ));
+
+            address signer = ecrecover(hash, v, r, s);
+
+            return signer == sender;
+            // emit Signer(signer);
+        }
+       
             //this tells you if the token is in database
         function tokenExist(IERC20 tokenAddress) private view returns(bool){
             
@@ -96,13 +148,18 @@ contract giftCard is ERC721Enumerable, Ownable {
         }
         
            //this adds new ERC20 to the list of accepted currencies
-        function addCurrency(IERC20 _paytoken) public onlyOwner {
+        function addCurrency(IERC20 _paytoken, uint8 v, bytes32 r, bytes32 s, string calldata message) public onlyOwner {
+            bool verified = verify(v, r, s, message, msg.sender);
+            require(verified , "You are not the signer");
+            //
             require(tokenExist(_paytoken)==false,"this currency is already added");
             allowedCrypto.push(
               TokenInfo({
                   paytoken:_paytoken
               })
             );    
+
+            emit CurrencyAdded(_paytoken, verified);
         } 
 
 
@@ -169,21 +226,23 @@ contract giftCard is ERC721Enumerable, Ownable {
         }
 
     //this empties the card and sends everything to the redeemer
-        function takeAll(uint256 cardId) public  {
-              require(block.timestamp>=cards[cardId].moneyDate, "you need to wait!");
-            require(block.timestamp>=cards[cardId].moneyDate, "you need to wait!");                                      
+        // function takeAll(ERC721 contract  uint token) public  {
+        //     requiere(erfhhhdhdfh);
             
-            TokenInfo storage tokens = allowedCrypto[cards[cardId].coinPid];
-            IERC20 paytoken;
-            paytoken = tokens.paytoken;
-            if(paytoken.balanceOf(address(this))>=cards[cardId].funds){
-                paytoken.transfer(msg.sender, cards[cardId].funds);
-                cards[cardId].funds=0;
-            }
+        //       require(block.timestamp>=cards[cardId].moneyDate, "you need to wait!");
+        //     require(block.timestamp>=cards[cardId].moneyDate, "you need to wait!");                                      
             
-            emit takenAll(cards[cardId].coinPid, paytoken.balanceOf(msg.sender));
-             //THIS FUNCTION DOESNT TAKE ANY ROYALTIES YET!
-        }
+        //     TokenInfo storage tokens = allowedCrypto[cards[cardId].coinPid];
+        //     IERC20 paytoken;
+        //     paytoken = tokens.paytoken;
+        //     if(paytoken.balanceOf(address(this))>=cards[cardId].funds){
+        //         paytoken.transfer(msg.sender, cards[cardId].funds);
+        //         cards[cardId].funds=0;
+        //     }
+            
+        //     emit takenAll(cards[cardId].coinPid, paytoken.balanceOf(msg.sender));
+        //      //THIS FUNCTION DOESNT TAKE ANY ROYALTIES YET!
+        // }
         
                 //this allows you to take a portion of funds or the whole amount
         function takeSomeMoney(uint256 cardId, uint256 amount) public payable{
@@ -206,7 +265,3 @@ contract giftCard is ERC721Enumerable, Ownable {
 
 
 }      
-
-
-    
-
