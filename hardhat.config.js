@@ -3,7 +3,7 @@ require("@nomicfoundation/hardhat-chai-matchers");
 require("@nomiclabs/hardhat-ethers");
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: "0.8.9",
+  solidity: "0.8.17",
   networks:{
     mumbai:{
       url:"https://polygon-mumbai.g.alchemy.com/v2/dWQt-JIGP8b87ZRvIbe6NFrk6N7rjX2z",
